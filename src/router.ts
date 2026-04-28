@@ -72,6 +72,15 @@ export function matchFixture(
     // rely on exact string values. This differs from the case-insensitive
     // matchesPattern() in helpers.ts, which is used for search/rerank/moderation
     // where exact casing rarely matters.
+    //
+    // Skip userMessage matching when the request is a tool-result continuation
+    // (last message role === "tool").  In that case the prior user text is the
+    // same as the initial turn, so a userMessage-keyed fixture would match
+    // every continuation turn and produce an infinite loop.  Tool-result turns
+    // should be matched by toolCallId or left unmatched (proxied).
+    const lastMsg = effective.messages?.[effective.messages.length - 1];
+    if (lastMsg?.role === "tool" && match.userMessage !== undefined) continue;
+
     if (match.userMessage !== undefined) {
       const msg = getLastMessageByRole(effective.messages, "user");
       const text = msg ? getTextContent(msg.content) : null;

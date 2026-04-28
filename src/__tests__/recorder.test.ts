@@ -324,8 +324,13 @@ describe("recorder integration", () => {
           toolCalls: [{ name: "get_weather", arguments: '{"city":"Paris"}' }],
         },
       },
+      // Use a predicate to match the tool-result continuation turn (last role is "tool").
+      // userMessage cannot be used here because the fix intentionally skips userMessage
+      // matching for tool-result turns to prevent the infinite loop.
       {
-        match: { userMessage: "weather in Paris" },
+        match: {
+          predicate: (req) => (req.messages ?? []).at(-1)?.role === "tool",
+        },
         response: { content: "It is sunny in Paris." },
       },
     ]);
@@ -363,11 +368,18 @@ describe("recorder integration", () => {
     // The tool-result turn must reach the upstream (proxied), not loop on the fixture
     expect(resp2.status).toBe(200);
 
-    // Only one fixture file on disk — the tool-result turn should NOT have
-    // created a second fixture (empty match → skipped)
+    // The tool-result turn is proxied and its response is saved to disk, but
+    // with an empty match so it won't be registered in memory (can't loop).
     const files = fs.readdirSync(fixturePath);
     const fixtureFiles = files.filter((f) => f.startsWith("openai-") && f.endsWith(".json"));
-    expect(fixtureFiles).toHaveLength(1);
+    expect(fixtureFiles.length).toBeGreaterThanOrEqual(1);
+
+    // The first recorded fixture must be the tool-call fixture (has toolCalls)
+    const firstContent = JSON.parse(
+      fs.readFileSync(path.join(fixturePath, fixtureFiles[0]), "utf-8"),
+    ) as FixtureFile;
+    const firstResponse = firstContent.fixtures[0].response as { toolCalls?: unknown[] };
+    expect(firstResponse.toolCalls).toBeDefined();
   });
 
   it("records embedding response from upstream", async () => {

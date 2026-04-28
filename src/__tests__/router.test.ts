@@ -280,6 +280,42 @@ describe("matchFixture — toolCallId", () => {
 });
 
 // ---------------------------------------------------------------------------
+// matchFixture — tool-result continuation skips userMessage fixtures
+// ---------------------------------------------------------------------------
+
+describe("matchFixture — tool-result continuation does not match userMessage fixture", () => {
+  it("does not match a userMessage fixture when the last message is role tool", () => {
+    // This is the infinite-loop regression: a recorded tool-call fixture has
+    // userMessage as its only match key.  A tool-result continuation request
+    // shares the same prior user text, so without the guard it would match
+    // the fixture and return tool_calls again forever.
+    const fixture = makeFixture({ userMessage: "What is the weather?" });
+    const req = makeReq({
+      messages: [
+        { role: "user", content: "What is the weather?" },
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            { id: "call_1", type: "function", function: { name: "get_weather", arguments: "{}" } },
+          ],
+        },
+        { role: "tool", content: "Sunny, 22°C", tool_call_id: "call_1" },
+      ],
+    });
+    expect(matchFixture([fixture], req)).toBeNull();
+  });
+
+  it("still matches a normal user-only request with userMessage fixture", () => {
+    const fixture = makeFixture({ userMessage: "What is the weather?" });
+    const req = makeReq({
+      messages: [{ role: "user", content: "What is the weather?" }],
+    });
+    expect(matchFixture([fixture], req)).toBe(fixture);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // matchFixture — toolName
 // ---------------------------------------------------------------------------
 
