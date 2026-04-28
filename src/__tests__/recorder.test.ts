@@ -312,6 +312,64 @@ describe("recorder integration", () => {
     expect(savedResponse.toolCalls).toHaveLength(1);
   });
 
+  it("tool-result follow-up is always proxied and not matched by tool-call fixture", async () => {
+    // Regression test: when a tool call is recorded, subsequent tool-result
+    // continuation turns must not match the recorded fixture (they share the
+    // same prior user message), which would create an infinite loop.
+    const toolCallId = "call_abc123";
+    const { recorderUrl, fixturePath } = await setupUpstreamAndRecorder([
+      {
+        match: { userMessage: "weather" },
+        response: {
+          toolCalls: [{ name: "get_weather", arguments: '{"city":"Paris"}' }],
+        },
+      },
+      {
+        match: { userMessage: "weather in Paris" },
+        response: { content: "It is sunny in Paris." },
+      },
+    ]);
+
+    // Request 1: initial user turn — proxied, tool call fixture recorded
+    const resp1 = await post(`${recorderUrl}/v1/chat/completions`, {
+      model: "gpt-4",
+      messages: [{ role: "user", content: "What is the weather?" }],
+      tools: [{ type: "function", function: { name: "get_weather", parameters: {} } }],
+    });
+    expect(resp1.status).toBe(200);
+    const body1 = JSON.parse(resp1.body);
+    const recordedToolCallId: string = body1.choices[0].message.tool_calls?.[0]?.id ?? toolCallId;
+
+    // Request 2: tool-result continuation — must NOT match the recorded fixture;
+    // it should proxy through to upstream and NOT loop.
+    const resp2 = await post(`${recorderUrl}/v1/chat/completions`, {
+      model: "gpt-4",
+      messages: [
+        { role: "user", content: "What is the weather?" },
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: recordedToolCallId,
+              type: "function",
+              function: { name: "get_weather", arguments: '{"city":"Paris"}' },
+            },
+          ],
+        },
+        { role: "tool", content: "Sunny, 22°C", tool_call_id: recordedToolCallId },
+      ],
+    });
+    // The tool-result turn must reach the upstream (proxied), not loop on the fixture
+    expect(resp2.status).toBe(200);
+
+    // Only one fixture file on disk — the tool-result turn should NOT have
+    // created a second fixture (empty match → skipped)
+    const files = fs.readdirSync(fixturePath);
+    const fixtureFiles = files.filter((f) => f.startsWith("openai-") && f.endsWith(".json"));
+    expect(fixtureFiles).toHaveLength(1);
+  });
+
   it("records embedding response from upstream", async () => {
     const { recorderUrl, fixturePath } = await setupUpstreamAndRecorder(
       [
