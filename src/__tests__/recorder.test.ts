@@ -368,11 +368,11 @@ describe("recorder integration", () => {
     // The tool-result turn must reach the upstream (proxied), not loop on the fixture
     expect(resp2.status).toBe(200);
 
-    // The tool-result turn is proxied and its response is saved to disk, but
-    // with an empty match so it won't be registered in memory (can't loop).
+    // The tool-result turn is proxied and its response is saved to disk with
+    // toolCallId in the match (not empty), so it can be replayed on subsequent runs.
     const files = fs.readdirSync(fixturePath);
     const fixtureFiles = files.filter((f) => f.startsWith("openai-") && f.endsWith(".json"));
-    expect(fixtureFiles.length).toBeGreaterThanOrEqual(1);
+    expect(fixtureFiles.length).toBeGreaterThanOrEqual(2);
 
     // The first recorded fixture must be the tool-call fixture (has toolCalls)
     const firstContent = JSON.parse(
@@ -380,6 +380,13 @@ describe("recorder integration", () => {
     ) as FixtureFile;
     const firstResponse = firstContent.fixtures[0].response as { toolCalls?: unknown[] };
     expect(firstResponse.toolCalls).toBeDefined();
+
+    // The second recorded fixture must have toolCallId in its match (not empty)
+    const secondContent = JSON.parse(
+      fs.readFileSync(path.join(fixturePath, fixtureFiles[1]), "utf-8"),
+    ) as FixtureFile;
+    expect(secondContent.fixtures[0].match.toolCallId).toBe(recordedToolCallId);
+    expect(secondContent._warning).toBeUndefined();
   });
 
   it("records embedding response from upstream", async () => {

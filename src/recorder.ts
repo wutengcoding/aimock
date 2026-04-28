@@ -854,14 +854,18 @@ function buildFixtureMatch(request: ChatCompletionRequest): {
   }
 
   // Chat/multimedia request — match on the last user message.
-  // Skip when the last message is role "tool": that's a tool-result continuation
-  // turn whose prior user text is identical to the initial request.  If we
-  // recorded such a fixture with userMessage as the key it would match every
-  // subsequent tool-result turn and create an infinite loop.
+  // When the last message is role "tool" (tool-result continuation turn), match
+  // on the tool_call_id of the last tool message instead of userMessage.
+  // Using userMessage here would match every continuation turn with the same
+  // user text, causing an infinite loop.  tool_call_id is a unique identifier
+  // assigned by the LLM for each tool call, so it safely distinguishes turns.
   const messages = request.messages ?? [];
   const lastMessage = messages[messages.length - 1];
   if (lastMessage?.role === "tool") {
-    return match; // empty match → isEmptyMatch=true → not registered in memory
+    if (lastMessage.tool_call_id) {
+      match.toolCallId = lastMessage.tool_call_id;
+    }
+    return match; // toolCallId set (or empty if missing) → router matches by toolCallId
   }
 
   const lastUser = getLastMessageByRole(messages, "user");
