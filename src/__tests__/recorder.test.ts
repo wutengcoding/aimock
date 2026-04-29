@@ -369,7 +369,7 @@ describe("recorder integration", () => {
     expect(resp2.status).toBe(200);
 
     // The tool-result turn is proxied and its response is saved to disk with
-    // toolCallId in the match (not empty), so it can be replayed on subsequent runs.
+    // lastToolCallName in the match (stable across sessions), so it can be replayed.
     const files = fs.readdirSync(fixturePath);
     const fixtureFiles = files.filter((f) => f.startsWith("openai-") && f.endsWith(".json"));
     expect(fixtureFiles.length).toBeGreaterThanOrEqual(2);
@@ -381,11 +381,11 @@ describe("recorder integration", () => {
     const firstResponse = firstContent.fixtures[0].response as { toolCalls?: unknown[] };
     expect(firstResponse.toolCalls).toBeDefined();
 
-    // The second recorded fixture must have toolCallId in its match (not empty)
+    // The second recorded fixture must have lastToolCallName in its match (not toolCallId)
     const secondContent = JSON.parse(
       fs.readFileSync(path.join(fixturePath, fixtureFiles[1]), "utf-8"),
     ) as FixtureFile;
-    expect(secondContent.fixtures[0].match.toolCallId).toBe(recordedToolCallId);
+    expect(secondContent.fixtures[0].match.lastToolCallName).toBe("get_weather");
     expect(secondContent._warning).toBeUndefined();
   });
 

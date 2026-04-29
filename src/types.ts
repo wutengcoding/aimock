@@ -67,6 +67,9 @@ export interface FixtureMatch {
   inputText?: string | RegExp;
   toolCallId?: string;
   toolName?: string;
+  /** Match tool-result continuation turns by the name of the tool called in the preceding
+   *  assistant message. More stable than toolCallId (which is randomly generated per session). */
+  lastToolCallName?: string;
   model?: string | RegExp;
   responseFormat?: string;
   predicate?: (req: ChatCompletionRequest) => boolean;
@@ -274,6 +277,7 @@ export interface FixtureFileEntry {
     inputText?: string;
     toolCallId?: string;
     toolName?: string;
+    lastToolCallName?: string;
     model?: string;
     responseFormat?: string;
     sequenceIndex?: number;

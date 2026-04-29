@@ -110,6 +110,23 @@ export function matchFixture(
       if (!found) continue;
     }
 
+    // lastToolCallName — match tool-result continuation turns by the name of the tool
+    // called in the preceding assistant message. Stable across sessions unlike toolCallId.
+    if (match.lastToolCallName !== undefined) {
+      const msgs = effective.messages ?? [];
+      const last = msgs[msgs.length - 1];
+      if (last?.role !== "tool") continue;
+      let foundName: string | undefined;
+      for (let i = msgs.length - 2; i >= 0; i--) {
+        const m = msgs[i];
+        if (m.role === "assistant" && m.tool_calls && m.tool_calls.length > 0) {
+          foundName = m.tool_calls[0].function?.name;
+          break;
+        }
+      }
+      if (foundName !== match.lastToolCallName) continue;
+    }
+
     // inputText — case-sensitive match against the embedding input text.
     // Same rationale as userMessage above: fixture authors specify exact strings.
     if (match.inputText !== undefined) {

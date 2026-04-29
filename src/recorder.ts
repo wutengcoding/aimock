@@ -862,10 +862,20 @@ function buildFixtureMatch(request: ChatCompletionRequest): {
   const messages = request.messages ?? [];
   const lastMessage = messages[messages.length - 1];
   if (lastMessage?.role === "tool") {
-    if (lastMessage.tool_call_id) {
-      match.toolCallId = lastMessage.tool_call_id;
+    // Use the name of the tool called in the preceding assistant message as the match key.
+    // Tool call names are stable across recording sessions; toolCallId is randomly generated
+    // by the LLM each run and would cause mismatches on replay.
+    for (let i = messages.length - 2; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0) {
+        const name = msg.tool_calls[0].function?.name;
+        if (name) {
+          match.lastToolCallName = name;
+        }
+        break;
+      }
     }
-    return match; // toolCallId set (or empty if missing) → router matches by toolCallId
+    return match;
   }
 
   const lastUser = getLastMessageByRole(messages, "user");
