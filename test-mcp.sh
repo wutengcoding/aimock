@@ -36,23 +36,24 @@ echo "[2/3] tools/list..."
 curl -sf -X POST "$MCP_URL" \
   -H "Content-Type: application/json" \
   -H "mcp-session-id: $SESSION" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | jq .
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 echo ""
 
-# 4. tools/call — 从文件读 args（文件不存在则用空 {}）
+# 4. tools/call — 从文件读 args，或用空 {}
+echo ""
 echo "[3/3] tools/call: $TOOL"
 if [ -n "$ARGS_FILE" ] && [ -f "$ARGS_FILE" ]; then
   echo "args file: $ARGS_FILE"
-  PAYLOAD=$(jq -c --arg tool "$TOOL" \
-    '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":$tool,"arguments":.}}' \
-    "$ARGS_FILE")
+  ARGS=$(cat "$ARGS_FILE")
 else
   echo "args: {}"
-  PAYLOAD=$(jq -cn --arg tool "$TOOL" \
-    '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":$tool,"arguments":{}}}')
+  ARGS="{}"
 fi
+
+PAYLOAD='{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"'"$TOOL"'","arguments":'"$ARGS"'}}'
 
 curl -sf -X POST "$MCP_URL" \
   -H "Content-Type: application/json" \
   -H "mcp-session-id: $SESSION" \
-  -d "$PAYLOAD" | jq .
+  -d "$PAYLOAD"
+echo ""
