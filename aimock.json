@@ -1,0 +1,24 @@
+{
+  "port": 4010,
+  "mcp": {
+    "path": "/mcp",
+    "serverInfo": { "name": "feishu-mcp-mock", "version": "1.0.0" },
+    "tools": [
+      {
+        "name": "feishu_calendar_freebusy",
+        "description": "查询飞书用户日历忙闲状态",
+        "result": "{\"calendar_event_list\": [{\"start_time\": \"2026-04-29T09:30:00+08:00\", \"end_time\": \"2026-04-29T10:00:00+08:00\", \"status\": \"accepted\"}, {\"start_time\": \"2026-04-29T15:00:00+08:00\", \"end_time\": \"2026-04-29T16:00:00+08:00\", \"status\": \"accepted\"}, {\"start_time\": \"2026-04-29T21:00:00+08:00\", \"end_time\": \"2026-04-29T21:30:00+08:00\", \"status\": \"accepted\"}]}"
+      },
+      {
+        "name": "feishu_calendar_event",
+        "description": "创建飞书日历事件",
+        "result": "{\"event_id\": \"mock_event_abc123\", \"status\": \"confirmed\", \"summary\": \"测试日历消息\"}"
+      },
+      {
+        "name": "feishu_im_user_message",
+        "description": "发送飞书 IM 消息",
+        "result": "{\"message_id\": \"mock_msg_xyz789\", \"status\": \"success\"}"
+      }
+    ]
+  }
+}
